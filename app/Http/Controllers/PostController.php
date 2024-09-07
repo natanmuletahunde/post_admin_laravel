@@ -2,72 +2,64 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Post;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use App\Models\Post;
 
 class PostController extends Controller
 {
+    // Fetch all posts
     public function index()
     {
-        $posts = Post::all();
-        return view('admin.posts.index', compact('posts'));
+        return response()->json(Post::all(), 200);
     }
 
-    public function create()
+    // Fetch a single post
+    public function show($id)
     {
-        return view('admin.posts.create');
+        $post = Post::find($id);
+        if (!$post) {
+            return response()->json(['message' => 'Post not found'], 404);
+        }
+        return response()->json($post, 200);
     }
 
+    // Create a new post
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required',
-            'image' => 'required|image',
-            'description' => 'required',
+            'title' => 'required|string|max:255',
+            'description' => 'required|string',
+            'image' => 'required|image',  // Handle image uploads if needed
         ]);
 
-        $imagePath = $request->file('image')->store('images', 'public');
+        $post = Post::create($request->all());
 
-        Post::create([
-            'name' => $request->name,
-            'image' => $imagePath,
-            'description' => $request->description,
-        ]);
-
-        return redirect()->route('posts.index')->with('success', 'Post added successfully');
+        return response()->json($post, 201);
     }
 
-    public function edit(Post $post)
+    // Update an existing post
+    public function update(Request $request, $id)
     {
-        return view('admin.posts.edit', compact('post'));
-    }
-
-    public function update(Request $request, Post $post)
-    {
-        $request->validate([
-            'name' => 'required',
-            'image' => 'sometimes|image',
-            'description' => 'required',
-        ]);
-
-        if ($request->hasFile('image')) {
-            Storage::delete('public/' . $post->image);
-            $imagePath = $request->file('image')->store('images', 'public');
-            $post->image = $imagePath;
+        $post = Post::find($id);
+        if (!$post) {
+            return response()->json(['message' => 'Post not found'], 404);
         }
 
-        $post->name = $request->name;
-        $post->description = $request->description;
-        $post->save();
+        $post->update($request->all());
 
-        return redirect()->route('posts.index')->with('success', 'Post updated successfully');
+        return response()->json($post, 200);
     }
 
-    public function destroy(Post $post)
+    // Delete a post
+    public function destroy($id)
     {
-        Storage::delete('public/' . $post->image);
+        $post = Post::find($id);
+        if (!$post) {
+            return response()->json(['message' => 'Post not found'], 404);
+        }
+
         $post->delete();
-        return redirect()->route('posts.index')->with('success', 'Post deleted successfully');
+
+        return response()->json(['message' => 'Post deleted'], 200);
     }
 }
